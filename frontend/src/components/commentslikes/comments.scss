@@ -1,0 +1,99 @@
+.like_and_comment {
+    display: flex;
+    align-items: center;
+    .icon_length {
+        display: flex;
+        .icon_comment {
+            margin-left: 1rem;
+            margin-right: .5rem;
+        }
+    }
+}
+
+.trash-comm {
+    cursor: pointer;
+}
+
+
+.comments {
+    span {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .9rem;
+        padding: .3rem;
+        border-radius: 1rem;
+        cursor: pointer;
+        .logoComm {
+            margin-right: .3rem;
+        }
+    }
+    .active {
+        transform: rotate(180deg);
+        color: red;
+    }
+    .showComment {
+        margin-left: 1rem;
+        margin-right: 1rem;
+        .commentaires {
+            background: rgba(168, 167, 167, 0.068);
+                    margin-top: .5rem ;
+            border-radius: .5rem;
+            padding: .5rem;
+            .info_user {
+                display: flex;
+                justify-content: space-between;
+                .user_comment {
+                    text-decoration: underline;
+                    
+                }
+                .trash-comm {
+                    font-size: .75rem;
+                }
+    
+            }
+            
+        }
+    }
+    form {
+        margin: 1rem 0 1rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        textarea {
+            resize: none;
+            border-radius: 1rem;
+            padding: .5rem;
+            width: 15rem;
+        }
+        #button {
+            margin-top: .5rem;
+            @include buttonStyle;
+            &:hover {
+                @include hover
+            }
+        }
+    }
+}
+
+.NoComm {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.error-content {
+    color: rgba(204, 9, 9, 0.589);
+}
+
+
+
+
+
+
+
+
+
+
+
+
