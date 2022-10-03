@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import SignInForm from "./SignINForm";
-import SignUpForm from "./SignUPForm";
+import SignInForm from "./signINform";
+import SignUpForm from "./signUPform";
 
 // gerer quel formulaire apparait selon si l'on est sur "se connecter" ou "s'inscire"
 
