@@ -1,25 +1,27 @@
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import Home from "./pages/Home";
+import Profile from "./pages/Profile";
+import Connexion from "./pages/Connexion";
+import Header from "./components/Header";
+import EditProfile from "./pages/EditProfile";
+import AxiosInterceptor from "./components/AxiosInterceptor";
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrowserRouter>
+      <AxiosInterceptor>
+        <Header />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/edit-profile" element={<EditProfile />} />
+          <Route path="*" element={<Home />} />
+          <Route path="/connexion" element={<Connexion />} />
+        </Routes>
+      </AxiosInterceptor>
+    </BrowserRouter>
   );
-}
+};
 
 export default App;
