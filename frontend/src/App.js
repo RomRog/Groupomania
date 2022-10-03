@@ -1,11 +1,11 @@
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Home from "./pages/Home";
-import Profile from "./pages/Profile";
-import Connexion from "./pages/Connexion";
-import Header from "./components/Header";
-import EditProfile from "./pages/EditProfile";
-import AxiosInterceptor from "./components/AxiosInterceptor";
+import Home from "./pages/home";
+import Profile from "./pages/profile";
+import Connexion from "./pages/connexion";
+import Header from "./components/header";
+import EditProfile from "./pages/editprofile";
+import AxiosInterceptor from "./components/axios";
 
 const App = () => {
   return (

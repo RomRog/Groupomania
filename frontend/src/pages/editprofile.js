@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { BiLoaderCircle } from 'react-icons/bi'
-import EditMyProfile from '../components/Profile/EditMyProfile';
+import EditMyProfile from '../components/profile/edit';
 
 const EditProfile = () => {
     return (

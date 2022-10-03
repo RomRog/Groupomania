@@ -1,6 +1,6 @@
 import axios from "axios";
 import React from "react";
-import Comments from "../CommentsAndLikes/Comments";
+import Comments from "../commentslikes/comments";
 import { BiTimeFive } from "react-icons/bi";
 import { BsFillTrashFill } from "react-icons/bs";
 

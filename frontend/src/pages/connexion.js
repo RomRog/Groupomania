@@ -1,5 +1,5 @@
 import React from 'react';
-import Log from '../components/Log/index.log'
+import Log from '../components/log/index.log'
 
 const Connexion = () => {
     return (

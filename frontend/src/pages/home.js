@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import Card from "../components/Posts/Card";
-import PostOnePost from "../components/Posts/PostOnePost";
+import Card from "../components/posts/card";
+import PostOnePost from "../components/posts/postone";
 import { BsFillArrowUpCircleFill } from "react-icons/bs";
 
 
