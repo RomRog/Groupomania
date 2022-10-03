@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500&display=swap');
+
+// variables
+$fontPoppins: 'Poppins', sans-serif;
+$colorDark: #192041;
+$colorSemiDark: #306BAC;
+$colorSemiLight: #6F9CEB;
+$colorLight: #EDF7F6;
+
+// reset
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    list-style-type: none;
+    text-decoration: none;
+    font-family: $fontPoppins;
+    &::selection {
+        background: $colorSemiLight;
+    }
+    a:visited {
+        color: white;
+    }
+}
