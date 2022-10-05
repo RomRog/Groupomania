@@ -31,7 +31,8 @@ const SignUpForm = () => {
   // connect with backend
   const handleSignUp = useCallback( async (data) => {
     try {
-      await axios.post("http://localhost:3000/api/users/signup", data);
+      axios.post("http://localhost:3000/api/users/signup", data);
+      console.log('ok')
       setInscrit(true)
       setErrorCo(false)
     } catch (error) {
