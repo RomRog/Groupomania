@@ -27,6 +27,7 @@ exports.signup = async (req, res, next) => {
   }
   const hash = bcrypt.hashSync(req.body.password, 10);
   const { email, username } = req.body;
+  console.log(email, username, hash);
   let user = await prisma.user.create({
     data: {
       email,
