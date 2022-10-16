@@ -12,11 +12,8 @@ model User {
     email       String        @unique
     username    String?       @unique @db.VarChar(255)
     password    String
-    posts       Post[]        
-    commentaire Commentaire[]
-    profile     Profile?
-    likes       Likes[]
-    isAdmin     Int           @default(0)
+    posts       Post[]   
+
 }
 
 model Post {
@@ -37,7 +34,7 @@ model Profile {
     id     Int     @id @default(autoincrement())
     image  String?
     bio    String?
-    user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    //user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId Int     @unique
 }
 
@@ -46,7 +43,7 @@ model Commentaire {
     comment  String
     createAt DateTime @default(now())
     post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-    user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    //user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
     postId   Int
     userId   Int
 }
@@ -55,6 +52,6 @@ model Likes {
     id     Int  @id @default(autoincrement())
     post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
     postId Int
-    user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    //user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId Int
 }
