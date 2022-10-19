@@ -1,171 +1,61 @@
-const auth = require("../auth.services");
+const UserModel = require("../models/user");
+const ObjectID = require("mongoose").Types.ObjectId;
+const fs = require("fs");
 
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
-
-
-
-// SIGNUP
-
-exports.signup = async (req, res, next) => {
-    try {
-        const user = await auth.signup(req, res);
-        res.status(201).json({
-            status: true,
-            message: "User created !",
-            data: user,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: error.message });
-    }
+/**
+ * Obtenir les données de tous les utilisateurs
+ *
+ * @param {*} req
+ * @param {*} res
+ */
+module.exports.getAllUsers = async (req, res) => {
+    const users = await UserModel.find().select("-password");
+    res.status(200).json(users);
 };
 
-// LOGIN
+/**
+ * Obtenir les données d'un seul utilisateur
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.userInfo = (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        //Si l'id de la requête n'est pas valide, je m'arrête là, et je réponds avec une erreur
+        return res.status(400).send("ID unknown : " + req.params.id);
 
-exports.login = async (req, res, next) => {
-    try {
-        const userLog = await auth.login(req, res)
-        res.status(200).json({
-            status: true,
-            message: 'Connexion ok !',
-            data: userLog
-        })
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
-    }
-}
-
-// SHOW ALL USERS
-
-exports.all = async (req, res, next) => {
-    try {
-        const allUsers = await prisma.user.findMany({
-            include: {
-                profile: true,
-                posts: true,
-                commentaire: true,
-                likes: true,
-            }
-        });
-        res.status(200).json({
-            status: true,
-            message: "All users",
-            data: allUsers
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
-    }
+    UserModel.findById(req.params.id, (err, docs) => {
+        /*Si l'id de la requête est valide je récupère les données de l'utilisateur concerné,
+         sauf le mot de passe, que je dois veiller à ne jamais envoyer dans le front.*/
+        if (!err) res.send(docs);
+        else console.log("ID unknown : " + err);
+    }).select("-password");
 };
 
-// SHOW ONE USER PROFIL
+/**
+ * Supprimer un utilisateur
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.deleteUser = async (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        return res.status(400).send("ID unknown : " + req.params.id);
 
-exports.oneUserProfile = async (req, res, next) => {
     try {
-        const id = req.user.id;
-        const oneUser = await prisma.user.findUnique({
-            where: {
-                id: Number(id),
-            },
-            select: {
-                id: true,
-                email: true,
-                isAdmin: true,
-                username: true,
-                profile: {
-                    select: {
-                        bio: true,
-                        id: true,
-                        image: true,
-                        userId: true,
-                    },
-                },
-            },
-        });
-        res.status(200).json({
-            status: true,
-            message: "One user Profile",
-            data: oneUser,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
+        const docs = await UserModel.findById(req.params.id);
+        if (!docs) console.log("Image non supprimée");
+        else fs.unlink(docs.picture, () => { });
+    } catch (err) {
+        return console.error(err);
     }
-};
 
-// SHOW ONE USER
-//
-exports.oneUser = async (req, res, next) => {
     try {
-        const id = req.user.id;
-        const oneUser = await prisma.user.findUnique({
-            where: {
-                id: Number(id),
-            },
-            include: {
-                likes: true,
-            },
-        });
-        res.status(200).json({
-            status: true,
-            message: "One user",
-            data: oneUser,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
+        await UserModel.deleteOne({ _id: req.params.id }).exec();
+        res.status(200).json({ message: "Utilisateur Supprimé." });
+    } catch (err) {
+        return res.status(500).json({ message: err });
     }
 };
-
-// DELETE USER
-
-exports.deleteUser = async (req, res, next) => {
-    if (req.user.isAdmin === 1) {
-        try {
-            const user = await prisma.user.delete({
-                where: {
-                    id: Number(req.params.id),
-                },
-            });
-            res.status(201).json({
-                status: true,
-                message: "Account deleted",
-                data: user,
-            });
-        } catch (error) {
-            console.log(error.message);
-            res.status(400).json({ message: error.message });
-        }
-    }
-};
-
-// DELETE OWN USER ACCOUNT 
-
-exports.deleteOwn = async (req, res, next) => {
-    try {
-        const id = req.user.id;
-        console.log(id);
-        const user = await prisma.user.delete({
-            where: {
-                id: Number(id),
-            },
-            select: {
-                email: true,
-                id: true,
-                isAdmin: true,
-                username: true,
-            }
-        });
-        res.status(201).json({
-            status: true,
-            message: "Your account is deleted",
-            data: user,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
-    }
-};
-

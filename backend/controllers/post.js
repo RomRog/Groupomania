@@ -1,179 +1,282 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
-const createHttpError = require("http-errors");
+const postModel = require("../models/post");
+const PostModel = require("../models/post");
+const UserModel = require("../models/user");
 const fs = require("fs");
+const { uploadErrors } = require("../errors");
+const ObjectID = require("mongoose").Types.ObjectId;
 
+//CRUD : Create
 
-// CREATE POST
+/**
+ * fonction pour créer un post
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.createPost = async (req, res) => {
+    let fileName;
+    if (req.file) {
+        try {
+            if (
+                req.file.mimetype !== "image/jpg" &&
+                req.file.mimetype !== "image/png" &&
+                req.file.mimetype !== "image/jpeg" &&
+                req.file.mimetype !== "image/gif"
+            )
+                throw Error("invalid file");
 
-exports.createPost = async (req, res, next) => {
-    try {
-        const { title, content, imageAltText } = req.body;
-        const userId = req.user.id;
-        const data = {
-            title,
-            content,
-            user: {
-                connect: { id: userId },
+            //verif du poids du fichier
+            if (req.file.size > 5000000) throw Error("max size");
+        } catch (err) {
+            const errors = uploadErrors(err);
+            return res.status(201).json({ errors });
+        }
+        //nouveau nom du fichier
+        const images = req.file.mimetype.split("/");
+        const extension = images.slice(-1).pop();
+        fileName = req.body.posterId + Date.now() + "." + extension;
+
+        //stockage de la nouvelle image.
+        fs.writeFile(
+            `../frontend/public/uploads/posts/${fileName}`,
+            req.file.buffer,
+            (err) => {
+                if (err) throw err;
             }
-        };
-        if (req.file) {
-            data.image = `${req.protocol}://${req.get("host")}/images/${req.file.filename
-                }`;
-            data.imageAltText = imageAltText;
-        }
-        const post = await prisma.post.create({
-            data,
-        });
-        res.status(200).json({
-            status: true,
-            message: "Post created !",
-            data: post,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
+        );
     }
-};
 
-// SHOW ALL POSTS
-
-exports.allPost = async (req, res, next) => {
-    try {
-        const allPost = await prisma.post.findMany({
-            select: {
-                id: true,
-                title: true,
-                content: true,
-                image: true,
-                createAt: true,
-                userId: true,
-                user: {
-                    select: {
-                        id: true,
-                        username: true,
-                        email: true,
-                        profile: {
-                            select: {
-                                image: true,
-                            }
-                        }
-                    },
-                },
-                commentaire: {
-                    select: {
-                        id: true,
-                        comment: true,
-                        user: {
-                            select: {
-                                id: true,
-                                username: true,
-                                email: true,
-                            },
-                        },
-                    },
-                },
-            },
-            orderBy: {
-                createAt: "desc",
-            },
-        });
-        res.status(200).json({
-            status: true,
-            message: "All Posts",
-            data: allPost,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
-    }
-};
-
-// SHOW ONE POST
-
-exports.onePost = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const onePost = await prisma.post.findUnique({
-            where: {
-                id: Number(id),
-            },
-            include: {
-                user: {
-                    include: {
-                        profile: true,
-                    },
-                },
-                commentaire: {
-                    orderBy: {
-                        createAt: "desc",
-                    },
-                    include: {
-                        user: {
-                            include: {
-                                profile: true,
-                            },
-                        },
-                    },
-                },
-                likes: true,
-            },
-        });
-        if (!onePost) {
-            return res.status(404).json({
-                message: "not found",
-            });
-        }
-        res.status(200).json({
-            status: true,
-            message: "One post",
-            data: onePost,
-        });
-    } catch (error) {
-        console.log(error.message);
-        res.status(400).json({ message: error.message });
-    }
-};
-
-// DELETE POST
-
-exports.deletePost = async (req, res, next) => {
-    const post = await prisma.post.findUnique({
-        where: {
-            id: Number(req.params.id),
-        },
-        include: {
-            user: {
-                include: {
-                    profile: true,
-                },
-            },
-        },
+    const newPost = new postModel({
+        posterId: req.body.posterId,
+        message: req.body.message,
+        picture: req.file ? `./uploads/posts/` + fileName : "",
+        likers: [],
+        comments: [],
     });
-    if (!post) {
-        return res.status(404).json({
-            message: "not found",
-        });
+
+    try {
+        const post = await newPost.save();
+        return res.status(201).json(post);
+    } catch (err) {
+        return res.status(400).send(err);
     }
-    if (req.user.isAdmin === 1 || post.userId === req.user.id) {
-        const image = req.body.image;
-        const filename = String(image).split("/image/")[1];
-        fs.unlink(`image/${filename}`, async () => {
-            try {
-                const post = await prisma.post.delete({
-                    where: {
-                        id: Number(req.params.id),
+};
+
+//CRUD : Read
+/**
+ * fonction pour récupérer les posts
+ *
+ * @param {*} req
+ * @param {*} res
+ */
+module.exports.readPost = (req, res) => {
+    PostModel.find((err, docs) => {
+        if (!err) res.send(docs);
+        else console.log("Error to get data : " + err);
+    }).sort({ createdAt: -1 });
+};
+
+//CRUD : Update
+/**
+ * fonction pour mettre à jour un post
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.updatePost = (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        return res.status(400).send("ID unknown : " + req.params.id);
+
+    const updatedRecord = {
+        message: req.body.message,
+    };
+
+    PostModel.findByIdAndUpdate(
+        req.params.id,
+        { $set: updatedRecord },
+        { new: true },
+        (err, docs) => {
+            if (!err) res.send(docs);
+            else console.log("update error : " + err);
+        }
+    );
+};
+
+//CRUD : Delete
+/**
+ * fonction pour supprimer un post
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.deletePost = (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        //
+        return res.status(400).send("ID unknown : " + req.params.id); //
+
+    PostModel.findByIdAndRemove(req.params.id, (err, docs) => {
+        if (!err) {
+            fs.unlink(docs.picture, () => { });
+            res.send(docs);
+        } else console.log("Deleting error : " + err);
+    });
+};
+
+/**
+ * fonction pour liker un post
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.likePost = async (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        return res.status(400).send("ID unknown : " + req.params.id);
+
+    try {
+        let updatedLikers = await PostModel.findByIdAndUpdate(
+            req.params.id,
+            /*j'ajoute avec $addToSet l'id dans le tableau likers du post*/
+            { $addToSet: { likers: req.body.id } },
+            //true pour renvoyer le document modifié
+            { new: true }
+        );
+        res.json({ updatedLikers });
+        let updatedLikes = await UserModel.findByIdAndUpdate(
+            req.body.id,
+            { $addToSet: { likes: req.params.id } },
+            { new: true }
+        );
+        res.json({ updatedLikes });
+    } catch (err) {
+        return;
+    }
+};
+
+/**
+ * fonction pour unlike un post
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.unlikePost = async (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        //
+        return res.status(400).send("ID unknown : " + req.params.id);
+
+    try {
+        let updatedLikers = await PostModel.findByIdAndUpdate(
+            req.params.id,
+            { $pull: { likers: req.body.id } },
+            { new: true }
+        );
+        res.json({ updatedLikers });
+        let updatedLikes = await UserModel.findByIdAndUpdate(
+            req.body.id,
+            { $pull: { likes: req.params.id } },
+            { new: true }
+        );
+        res.json({ updatedLikes });
+    } catch (err) {
+        return;
+    }
+};
+
+/**
+ * fonction de creation de comments
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.commentPost = (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        return res.status(400).send("ID unknown : " + req.params.id);
+    try {
+        return PostModel.findByIdAndUpdate(
+            req.params.id,
+            {
+                $push: {
+                    comments: {
+                        commenterId: req.body.commenterId,
+                        commenterPseudo: req.body.commenterPseudo,
+                        text: req.body.text,
+                        timestamp: new Date().getTime(),
                     },
-                });
-                res.status(200).json({
-                    status: true,
-                    message: "Post deleted !",
-                });
-            } catch (error) {
-                res.status(400).json({ message: error.message });
+                },
+            },
+            (err, docs) => {
+                if (!err) return res.send(docs);
+                else return res.status(400).send(err);
             }
+        );
+    } catch (err) {
+        return;
+    }
+};
+
+/**
+ * fonction dde modification de comments
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.editCommentPost = (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        return res.status(400).send("ID unknown : " + req.params.id);
+
+    try {
+        return PostModel.findById(req.params.id, (err, docs) => {
+            const theComment = docs.comments.find((comment) =>
+                comment._id.equals(req.body.commentId)
+            );
+
+            if (!theComment) return res.status(404).send("Comment not found");
+            theComment.text = req.body.text;
+
+            return docs.save((err) => {
+                if (!err) return res.status(200).send(docs);
+                return res.status(500).send(err);
+            });
         });
-    } else {
-        res.status(403).json({ message: "pas autorisé" })
+    } catch (err) {
+        return res.status(400).send(err);
+    }
+};
+
+/**
+ * fonction de supression de comments
+ *
+ * @param {*} req
+ * @param {*} res
+ * @returns
+ */
+module.exports.deleteCommentPost = (req, res) => {
+    if (!ObjectID.isValid(req.params.id))
+        return res.status(400).send("ID unknown : " + req.params.id);
+
+    try {
+        return PostModel.findByIdAndUpdate(
+            req.params.id,
+            {
+                $pull: {
+                    comments: {
+                        _id: req.body.commentId,
+                    },
+                },
+            },
+            { new: true },
+            (err, docs) => {
+                if (!err) return res.send(docs);
+                else return res.status(400).send(err);
+            }
+        );
+    } catch (err) {
+        return res.status(400).send(err);
     }
 };

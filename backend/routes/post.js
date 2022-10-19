@@ -1,23 +1,19 @@
-const express = require('express')
-const router = express.Router()
+const router = require("express").Router();
+const postController = require("../controllers/post");
+const multer = require("multer");
+const upload = multer();
 
-const post = require('../controllers/post')
-const auth = require('../middleware/auth')
-const multer = require('../middleware/multer-config')
-const likesRoutes = require('./likes')
-const commentsRoutes = require('./comment')
+//post
+router.post("/", upload.single("file"), postController.createPost);
+router.get("/", postController.readPost);
+router.put("/:id", postController.updatePost);
+router.delete("/:id", postController.deletePost);
+router.patch("/like-post/:id", postController.likePost);
+router.patch("/unlike-post/:id", postController.unlikePost);
 
-// create / post
-router.post('/', auth, multer, post.createPost)
-
-// read / get 
-router.get('/', auth, post.allPost)
-router.get('/:id', auth, post.onePost)
-
-// delete 
-router.delete('/:id', auth, post.deletePost)
-
-router.use('/:postId/likes', likesRoutes)
-router.use('/:postId/comments', commentsRoutes)
+//comment
+router.patch("/comment-post/:id", postController.commentPost);
+router.patch("/edit-comment-post/:id", postController.editCommentPost);
+router.patch("/delete-comment-post/:id", postController.deleteCommentPost);
 
 module.exports = router;
