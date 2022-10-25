@@ -1,66 +1,75 @@
-const mongoose = require("mongoose");
-const { isEmail } = require("validator");
-const bcrypt = require("bcrypt");
+const mongoose = require('mongoose');
+const { isEmail } = require('validator');
+const bcrypt = require('bcrypt');
+const uniqueValidator = require('mongoose-unique-validator'); // package vérification d'un email unique
 
-/**
- * Schema de création d'une fiche utilisateur.
- */
+
 const userSchema = new mongoose.Schema(
     {
-        pseudo: {
+        name: {
             type: String,
             required: true,
-            minLength: 3,
-            maxLength: 30,
-            unique: true,
-            trim: true,
+            minlength: 3,
+            maxlength: 55,
+            trim: true
+        },
+        firstname: {
+            type: String,
+            required: true,
+            minlength: 3,
+            maxlength: 55
         },
         email: {
             type: String,
             required: true,
             validate: [isEmail],
             lowercase: true,
-            unique: true,
+            unique: true,  // unique -> une adresse mail = un user
             trim: true,
         },
         password: {
             type: String,
             required: true,
             max: 1024,
-            minlength: 6,
+            minlength: 6
+        },
+        job: {
+            type: String,
+            required: true
+        },
+        role: {
+            type: String,
+            required: true
         },
         picture: {
+            type: String
+        },
+        bio: {
             type: String,
-            default: "./img/random-user.png",
+            max: 1024,
+        },
+        followers: {
+            type: [String]
+        },
+        following: {
+            type: [String]
         },
         likes: {
-            type: [String],
-        },
-        isAdmin: {
-            type: Boolean,
-            allowNull: false,
-            defaultValue: false,
-        },
+            type: [String]
+        }
     },
     {
         timestamps: true,
     }
-);
+)
 
-// fonction pour "saler"(crypter) les mots de passe.
+//play function before save into display: 'block'
 userSchema.pre("save", async function (next) {
     const salt = await bcrypt.genSalt();
     this.password = await bcrypt.hash(this.password, salt);
     next();
 });
 
-/**
- * fonction de verification du mot de passe en fonction du mail
- *
- * @param {*} email
- * @param {*} password
- * @returns
- */
 userSchema.statics.login = async function (email, password) {
     const user = await this.findOne({ email });
     if (user) {
@@ -68,11 +77,12 @@ userSchema.statics.login = async function (email, password) {
         if (auth) {
             return user;
         }
-        throw Error("incorrect password");
+        throw Error('incorrect password');
     }
-    throw Error("incorrect email");
+    throw Error('incorrect email')
 };
 
-const UserModel = mongoose.model("user", userSchema);
+userSchema.plugin(uniqueValidator); // utilisation du package
+const UserModel = mongoose.model('user', userSchema);
 
 module.exports = UserModel;

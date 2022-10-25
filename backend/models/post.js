@@ -1,23 +1,22 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-/**
- * Schema de création d'une fiche pour les posts.
- */
 const PostSchema = new mongoose.Schema(
     {
         posterId: {
             type: String,
-            required: true,
+            required: true
         },
         message: {
             type: String,
             trim: true,
-            maxlength: 2048,
+            maxlength: 10000
         },
         picture: {
-            type: String,
+            type: String
         },
-
+        video: {
+            type: String
+        },
         likers: {
             type: [String],
             required: true,
@@ -26,10 +25,10 @@ const PostSchema = new mongoose.Schema(
             type: [
                 {
                     commenterId: String,
-                    commenterPseudo: String,
+                    commenterName: String,
                     text: String,
-                    timestamp: Number,
-                },
+                    timestamp: Number
+                }
             ],
             required: true,
         },
@@ -39,4 +38,4 @@ const PostSchema = new mongoose.Schema(
     }
 );
 
-module.exports = mongoose.model("post", PostSchema);
+module.exports = mongoose.model('post', PostSchema);

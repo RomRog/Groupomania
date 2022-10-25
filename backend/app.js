@@ -1,80 +1,54 @@
-// importe express
-
-const express = require("express");
-
-// crée une application express
+const express = require('express');
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+const userRoutes = require('./routes/user.routes');
+const postRoutes = require('./routes/post.routes');
+require('dotenv').config({ path: './config/.env' });
+require('./config/db');
+const { checkUser, requireAuth } = require('./middleware/auth.middleware');
+const cors = require('cors');
+const mongoSanitize = require('express-mongo-sanitize');
+const helmet = require("helmet");
+const path = require('path');
 
 const app = express();
 
-// importe helmet qui aide à sécuriser l'applications Express en définissant divers en-têtes HTTP
+//CORS
+const corsOptions = {
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+  'allowedHeaders': ['sessionId', 'Content-Type'],
+  'exposedHeaders': ['sessionId'],
+  'methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  'preflightContinue': false
+}
+app.use(cors(corsOptions));
 
-const helmet = require("helmet");
 
-// importe Mongoose qui permet d'utiliser des fonctions complète pour intéragir avec la BDD
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
+app.use(mongoSanitize()); // En prévention des injections
+app.use(helmet()); // helmet
 
-const mongoose = require("mongoose");
+app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
-// importe path qui permet de connaitre le chemin du système de fichier
-
-const path = require("path");
-
-// importe les routes
-
-const userRoutes = require("./routes/user");
-const postRoutes = require ("./routes/post");
-
-// Appel de .env pour utiliser les variables d'environnement (npm install dotenv --save)
-
-require('dotenv').config()
-
-// définit l'accès à la BDD MongoDB (utilise les var d'env pour ne pas transmettre les logs de connexion en clair dans le code)
-
-mongoose
-  .connect(
-    'mongodb+srv://UserP7:<password>@groupomania.fpzzvg1.mongodb.net/test',
-    { useNewUrlParser: true, useUnifiedTopology: true }
-  )
-  .then(() => console.log("Connexion à MongoDB réussie !"))
-  .catch(() => console.log("Connexion à MongoDB échouée !"));
-
-// Utilise les services des middlewares proposés par helmet
-
-app.use(helmet());
-
-// Middlewares
-
-// Middleware Header pour contourner les erreurs en débloquant certains systèmes de sécurité CORS, afin que tout le monde puisse faire des requetes depuis son navigateur
-app.use((req, res, next) => {
-
-  // on indique que les ressources peuvent être partagées depuis n'importe quelle origine
-
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  // on indique les entêtes qui seront utilisées après la pré-vérification cross-origin afin de donner l'autorisation
-
-  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content, Accept, Content-Type, Authorization");
-
-  // on indique les méthodes autorisées pour les requêtes HTTP
-
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  next();
+//jwt
+app.get('*', checkUser);
+app.get('/jwtid', requireAuth, (req, res) => {
+  res.status(200).send(res.locals.user._id)
 });
 
-// affiche le corps de la requête
 
-app.use(express.json());
+//routes
+app.use('/api/user', userRoutes);
+app.use('/api/post', postRoutes);
 
-// répond aux requêtes envoyées à "/images"
 
-app.use('/images', express.static(path.join(__dirname, 'images')))
+app.use('/pictures', express.static(path.join(__dirname, 'pictures')));
 
-// utilise les middlewares importés depuis notre fichier routes
+//server
+app.listen(process.env.PORT, () => {
 
-app.use("/api/user", userRoutes);
-app.use("/api/post", postRoutes);
-
-// exporte l'app pour l'utiliser/l'appeler dans les autres fichiers par la suite
-
-module.exports = app;
+  console.log(`listening on  port ${process.env.PORT}`);
+})

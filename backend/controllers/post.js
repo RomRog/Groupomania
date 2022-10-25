@@ -1,56 +1,28 @@
-const postModel = require("../models/post");
-const PostModel = require("../models/post");
-const UserModel = require("../models/user");
-const fs = require("fs");
-const { uploadErrors } = require("../errors");
+const postModel = require("../models/post.model");
+const PostModel = require("../models/post.model");
+const UserModel = require("../models/user.model");
 const ObjectID = require("mongoose").Types.ObjectId;
+const fs = require("fs");
+const { promisify } = require("util");
+const pipeline = promisify(require("stream").pipeline);
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
-//CRUD : Create
+//lire post
+module.exports.readPost = (req, res) => {
+    PostModel.find((err, docs) => {
+        if (!err) res.send(docs);
+        else console.log("Error to get data : " + err);
+    }).sort({ createdAt: -1 });
+};
 
-/**
- * fonction pour créer un post
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//créer post
 module.exports.createPost = async (req, res) => {
-    let fileName;
-    if (req.file) {
-        try {
-            if (
-                req.file.mimetype !== "image/jpg" &&
-                req.file.mimetype !== "image/png" &&
-                req.file.mimetype !== "image/jpeg" &&
-                req.file.mimetype !== "image/gif"
-            )
-                throw Error("invalid file");
-
-            //verif du poids du fichier
-            if (req.file.size > 5000000) throw Error("max size");
-        } catch (err) {
-            const errors = uploadErrors(err);
-            return res.status(201).json({ errors });
-        }
-        //nouveau nom du fichier
-        const images = req.file.mimetype.split("/");
-        const extension = images.slice(-1).pop();
-        fileName = req.body.posterId + Date.now() + "." + extension;
-
-        //stockage de la nouvelle image.
-        fs.writeFile(
-            `../frontend/public/uploads/posts/${fileName}`,
-            req.file.buffer,
-            (err) => {
-                if (err) throw err;
-            }
-        );
-    }
-
     const newPost = new postModel({
         posterId: req.body.posterId,
         message: req.body.message,
-        picture: req.file ? `./uploads/posts/` + fileName : "",
+        video: req.body.video,
+        picture: req.body.picture,
         likers: [],
         comments: [],
     });
@@ -63,139 +35,130 @@ module.exports.createPost = async (req, res) => {
     }
 };
 
-//CRUD : Read
-/**
- * fonction pour récupérer les posts
- *
- * @param {*} req
- * @param {*} res
- */
-module.exports.readPost = (req, res) => {
-    PostModel.find((err, docs) => {
-        if (!err) res.send(docs);
-        else console.log("Error to get data : " + err);
-    }).sort({ createdAt: -1 });
-};
-
-//CRUD : Update
-/**
- * fonction pour mettre à jour un post
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//modifier post
 module.exports.updatePost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+    const token = req.cookies.jwt;
+    const decodedToken = jwt.verify(token, process.env.TOKEN_SECRET);
+    const role = decodedToken.role;
 
-    const updatedRecord = {
-        message: req.body.message,
-    };
+    try {
+        return PostModel.findById(req.params.id, (err, docs) => {
+            const thePost = docs;
 
-    PostModel.findByIdAndUpdate(
-        req.params.id,
-        { $set: updatedRecord },
-        { new: true },
-        (err, docs) => {
-            if (!err) res.send(docs);
-            else console.log("update error : " + err);
-        }
-    );
+            if (!thePost) return res.status(404).send("Post not found");
+            if (decodedToken.id != thePost.posterId && role != "ADMIN") return res.status(403).send("Vous n'avez pas le droit de modifier cette publication");
+            thePost.message = req.body.message;
+
+            return docs.save((err) => {
+                if (!err) return res.status(200).send(docs);
+                return res.status(500).send(err);
+            });
+        });
+    } catch (err) {
+        return res.status(400).send(err);
+    }
 };
 
-//CRUD : Delete
-/**
- * fonction pour supprimer un post
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//supprimer post
 module.exports.deletePost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        //
-        return res.status(400).send("ID unknown : " + req.params.id); //
+    const token = req.cookies.jwt;
+    const decodedToken = jwt.verify(token, process.env.TOKEN_SECRET);
+    const role = decodedToken.role;
 
-    PostModel.findByIdAndRemove(req.params.id, (err, docs) => {
-        if (!err) {
-            fs.unlink(docs.picture, () => { });
-            res.send(docs);
-        } else console.log("Deleting error : " + err);
-    });
+    try {
+        return PostModel.findById(req.params.id, (err, docs) => {
+            const thePost = docs;
+
+            if (!thePost) return res.status(404).send("Post not found");
+            if (decodedToken.id != thePost.posterId && role != "ADMIN") return res.status(403).send("Vous n'avez pas le droit de supprimer ce post");
+
+            PostModel.remove(thePost, (err, docs) => {
+                if (!err) res.send(docs);
+                else console.log("Delete error : " + err);
+            });
+        });
+    } catch (err) {
+        return res.status(400).send(err);
+    }
 };
 
-/**
- * fonction pour liker un post
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//aimer un post
 module.exports.likePost = async (req, res) => {
     if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+        return res.status(400).send("ID unknow : " + req.params.id);
 
     try {
-        let updatedLikers = await PostModel.findByIdAndUpdate(
-            req.params.id,
-            /*j'ajoute avec $addToSet l'id dans le tableau likers du post*/
-            { $addToSet: { likers: req.body.id } },
-            //true pour renvoyer le document modifié
-            { new: true }
-        );
-        res.json({ updatedLikers });
-        let updatedLikes = await UserModel.findByIdAndUpdate(
+        //ajout de l'utilisateur dans les likers du post
+        await PostModel
+            .findByIdAndUpdate(
+                req.params.id,
+                {
+                    $addToSet: { likers: req.body.id },
+                },
+                { new: true },
+                (err, docs) => {
+                    if (err) return res.status(400).send(err);
+                }
+            )
+            .clone();
+        //ajout l'Id du post à l'utilisateur
+        await UserModel.findByIdAndUpdate(
             req.body.id,
-            { $addToSet: { likes: req.params.id } },
-            { new: true }
-        );
-        res.json({ updatedLikes });
+            {
+                $addToSet: { likes: req.params.id },
+            },
+            { new: true },
+            (err, docs) => {
+                if (!err) res.send(docs);
+                else return res.status(400).send(err);
+            }
+        ).clone();
     } catch (err) {
-        return;
+        return res.status(400).send(err);
     }
 };
 
-/**
- * fonction pour unlike un post
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//ne plus aimer un post
 module.exports.unlikePost = async (req, res) => {
     if (!ObjectID.isValid(req.params.id))
-        //
-        return res.status(400).send("ID unknown : " + req.params.id);
+        return res.status(400).send("ID unknow : " + req.params.id);
 
     try {
-        let updatedLikers = await PostModel.findByIdAndUpdate(
-            req.params.id,
-            { $pull: { likers: req.body.id } },
-            { new: true }
-        );
-        res.json({ updatedLikers });
-        let updatedLikes = await UserModel.findByIdAndUpdate(
+        //retire l'utilisateur dans les likers du post
+        await PostModel
+            .findByIdAndUpdate(
+                req.params.id,
+                {
+                    $pull: { likers: req.body.id },
+                },
+                { new: true },
+                (err, docs) => {
+                    if (err) return res.status(400).send(err);
+                }
+            )
+            .clone();
+        //retire l'Id du post à l'utilisateur
+        await UserModel.findByIdAndUpdate(
             req.body.id,
-            { $pull: { likes: req.params.id } },
-            { new: true }
-        );
-        res.json({ updatedLikes });
+            {
+                $pull: { likes: req.params.id },
+            },
+            { new: true },
+            (err, docs) => {
+                if (!err) res.send(docs);
+                else return res.status(400).send(err);
+            }
+        ).clone();
     } catch (err) {
-        return;
+        return res.status(400).send(err);
     }
 };
 
-/**
- * fonction de creation de comments
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//commenter un post
 module.exports.commentPost = (req, res) => {
     if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+        return res.status(400).send("ID unknow : " + req.params.id);
+
     try {
         return PostModel.findByIdAndUpdate(
             req.params.id,
@@ -203,32 +166,28 @@ module.exports.commentPost = (req, res) => {
                 $push: {
                     comments: {
                         commenterId: req.body.commenterId,
-                        commenterPseudo: req.body.commenterPseudo,
+                        commenterName: req.body.commenterName,
                         text: req.body.text,
                         timestamp: new Date().getTime(),
                     },
                 },
             },
+            { new: true },
             (err, docs) => {
                 if (!err) return res.send(docs);
                 else return res.status(400).send(err);
             }
         );
     } catch (err) {
-        return;
+        return res.status(400).send(err);
     }
 };
 
-/**
- * fonction dde modification de comments
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//modifier un commentaire
 module.exports.editCommentPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+    const token = req.cookies.jwt;
+    const decodedToken = jwt.verify(token, process.env.TOKEN_SECRET);
+    const role = decodedToken.role;
 
     try {
         return PostModel.findById(req.params.id, (err, docs) => {
@@ -237,6 +196,7 @@ module.exports.editCommentPost = (req, res) => {
             );
 
             if (!theComment) return res.status(404).send("Comment not found");
+            if (decodedToken.id != theComment.commenterId && role != "ADMIN") return res.status(403).send("Vous n'avez pas le droit de modifier ce commentaire");
             theComment.text = req.body.text;
 
             return docs.save((err) => {
@@ -249,33 +209,26 @@ module.exports.editCommentPost = (req, res) => {
     }
 };
 
-/**
- * fonction de supression de comments
- *
- * @param {*} req
- * @param {*} res
- * @returns
- */
+//supprimer un commentaire
 module.exports.deleteCommentPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+    const token = req.cookies.jwt;
+    const decodedToken = jwt.verify(token, process.env.TOKEN_SECRET);
+    const role = decodedToken.role;
 
     try {
-        return PostModel.findByIdAndUpdate(
-            req.params.id,
-            {
-                $pull: {
-                    comments: {
-                        _id: req.body.commentId,
-                    },
-                },
-            },
-            { new: true },
-            (err, docs) => {
-                if (!err) return res.send(docs);
-                else return res.status(400).send(err);
-            }
-        );
+        return PostModel.findById(req.params.id, (err, docs) => {
+            const theComment = docs.comments.find((comment) =>
+                comment._id.equals(req.body.commentId)
+            );
+
+            if (!theComment) return res.status(404).send("Comment not found");
+            if (decodedToken.id != theComment.commenterId && role != "ADMIN") return res.status(403).send("Vous n'avez pas le droit de modifier ce commentaire");
+
+            PostModel.remove(theComment, (err, docs) => {
+                if (!err) res.send(docs);
+                else console.log("Delete error : " + err);
+            });
+        });
     } catch (err) {
         return res.status(400).send(err);
     }
