@@ -1,7 +1,7 @@
 const router = require('express').Router();
-const postController = require('../controllers/post.controller');
-const multer = require('../middleware/multer-config');
-const { requireAuth } = require('../middleware/auth.middleware');
+const postController = require('../controllers/post');
+const multer = require('../middleware/multer');
+const { requireAuth } = require('../middleware/auth');
 
 router.get('/', requireAuth, postController.readPost);//lire post
 router.post('/', requireAuth, multer, postController.createPost);//écrire post

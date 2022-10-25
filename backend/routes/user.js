@@ -1,9 +1,9 @@
 const router = require('express').Router();
-const authController = require('../controllers/auth.controller');
-const userController = require('../controllers/user.controller');
+const authController = require('../controllers/auth');
+const userController = require('../controllers/user');
 const rateLimit = require('express-rate-limit'); // package de prévention des forces brutes
-const multer = require('../middleware/multer-config');
-const { requireAuth } = require('../middleware/auth.middleware');
+const multer = require('../middleware/multer');
+const { requireAuth } = require('../middleware/auth');
 
 const passLimiter = rateLimit({
     windowMs: 2 * 60 * 1000, // Temps défini (en minutes) pour tester l'application
