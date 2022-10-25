@@ -1,4 +1,4 @@
-const UserModel = require("../models/user.model");
+const UserModel = require("../models/user");
 const ObjectID = require("mongoose").Types.ObjectId;
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
