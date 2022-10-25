@@ -1,11 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-const userRoutes = require('./routes/user.routes');
-const postRoutes = require('./routes/post.routes');
-require('dotenv').config({ path: './config/.env' });
+const userRoutes = require('./routes/user');
+const postRoutes = require('./routes/post');
+require('dotenv').config({ path: './.env' });
 require('./config/db');
-const { checkUser, requireAuth } = require('./middleware/auth.middleware');
+const { checkUser, requireAuth } = require('./middleware/auth');
 const cors = require('cors');
 const mongoSanitize = require('express-mongo-sanitize');
 const helmet = require("helmet");
